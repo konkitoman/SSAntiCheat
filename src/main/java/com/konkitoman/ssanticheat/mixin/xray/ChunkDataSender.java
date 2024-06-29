@@ -1,9 +1,8 @@
 package com.konkitoman.ssanticheat.mixin.xray;
 
 import com.konkitoman.ssanticheat.xray.ChunkDataState;
-import com.konkitoman.ssanticheat.xray.Xray;
+import com.konkitoman.ssanticheat.xray.XRay;
 import net.minecraft.block.BlockState;
-import net.minecraft.block.Blocks;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.WorldChunk;
 import org.spongepowered.asm.mixin.Final;
@@ -27,7 +26,7 @@ public class ChunkDataSender {
 
     @Inject(method = "<init>(Lnet/minecraft/world/chunk/WorldChunk;)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/chunk/WorldChunk;getHeightmaps()Ljava/util/Collection;"))
     private void ChunkDataBegin(WorldChunk chunk, CallbackInfo ci) {
-        if (!Xray.ENABLED) return;
+        if (!XRay.isEnable()) return;
         toRestore = new ArrayList<>();
         int i = 0;
         for (ChunkSection section : chunk.getSectionArray()) {
@@ -36,10 +35,10 @@ public class ChunkDataSender {
                     for (int x = 0; x < 16; x++) {
                         BlockState state = section.getBlockState(x, y, z);
                         if (state.isOpaque()) {
-                            if (Xray.isVisible(chunk, x, y, z, section, i)) continue;
+                            if (XRay.isVisible(chunk, x, y, z, section, i)) continue;
 
                             toRestore.add(new ChunkDataState(state, i, x, y, z));
-                            section.setBlockState(x, y, z, Xray.shadowBlock().getDefaultState());
+                            section.setBlockState(x, y, z, XRay.shadowBlock().getDefaultState());
                         }
                     }
                 }

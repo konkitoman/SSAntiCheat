@@ -1,6 +1,7 @@
 package com.konkitoman.ssanticheat.mixin.xray;
 
-import com.konkitoman.ssanticheat.xray.Xray;
+import com.konkitoman.ssanticheat.SSAntiCheat;
+import com.konkitoman.ssanticheat.xray.XRay;
 import com.konkitoman.ssanticheat.xray.visibile_check.VisibleCheckModeLIGHT;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -26,10 +27,10 @@ public class ServerPlayerInteractionManager {
 
     @Inject(method = "onBlockBreakingAction", at = @At("TAIL"))
     private void onBlockBreakingAction(BlockPos pos, boolean success, int sequence, String reason, CallbackInfo ci) {
-        if (!Xray.ENABLED) return;
+        if (!XRay.isEnable()) return;
 
-        if (Xray.visibleCheck instanceof VisibleCheckModeLIGHT) {
-            Xray.addPlayerBlockUpdate(world, player, pos);
+        if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeLIGHT) {
+            XRay.addPlayerBlockUpdate(world, player, pos);
         } else {
             for (BlockPos poss : List.of(pos.up(), pos.down(), pos.north(), pos.east(), pos.south(), pos.west())) {
                 world.getChunkManager().sendToNearbyPlayers(player, new BlockUpdateS2CPacket(world, poss));

@@ -1,6 +1,7 @@
 package com.konkitoman.ssanticheat.mixin.xray;
 
-import com.konkitoman.ssanticheat.xray.Xray;
+import com.konkitoman.ssanticheat.SSAntiCheat;
+import com.konkitoman.ssanticheat.xray.XRay;
 import com.konkitoman.ssanticheat.xray.visibile_check.VisibleCheckModeLIGHT;
 import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.network.packet.c2s.play.PlayerInteractBlockC2SPacket;
@@ -24,11 +25,11 @@ public class ServerPlayNetworkHandler {
 
     @Inject(method = "onPlayerInteractBlock", at = @At("TAIL"))
     public void onPlayerInteractBlock(PlayerInteractBlockC2SPacket packet, CallbackInfo ci, @Local ServerWorld serverWorld, @Local BlockPos blockPos) {
-        if (!Xray.ENABLED) return;
+        if (!XRay.isEnable()) return;
 
         int size = 15;
-        if (Xray.visibleCheck instanceof VisibleCheckModeLIGHT) {
-            Xray.addPlayerBlockUpdate(serverWorld, player, blockPos);
+        if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeLIGHT) {
+            XRay.addPlayerBlockUpdate(serverWorld, player, blockPos);
         } else {
             for (BlockPos pos : List.of(blockPos.up(), blockPos.down(), blockPos.north(), blockPos.east(), blockPos.south(), blockPos.west())) {
                 serverWorld.getChunkManager().sendToNearbyPlayers(player, new BlockUpdateS2CPacket(serverWorld, pos));

@@ -1,5 +1,8 @@
 package com.konkitoman.ssanticheat.xray;
 
+import com.konkitoman.ssanticheat.ConfigIN;
+import com.konkitoman.ssanticheat.ConfigOUT;
+import com.konkitoman.ssanticheat.IConfig;
 import com.konkitoman.ssanticheat.SSAntiCheat;
 import com.konkitoman.ssanticheat.xray.visibile_check.VisibleCheckModeLIGHT;
 import com.konkitoman.ssanticheat.xray.visibile_check.VisibleCheckModeVISIBLE;
@@ -29,21 +32,17 @@ import net.minecraft.world.chunk.WorldChunk;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class Xray {
+public class XRay {
     public record PlayerBlockUpdate(ServerPlayerEntity player, BlockPos pos) {
     }
 
-    public static boolean ENABLED = true;
-    public static VisibleCheck visibleCheck = new VisibleCheckModeLIGHT();
-    public static GetShadowBlock getShadowBlock = new GetShadowBlockRandom();
-
     static HashMap<RegistryKey<World>, ArrayList<PlayerBlockUpdate>> UPDATES = new HashMap<>();
+    static CommandRegistryAccess REGISTRY_ACCESS = null;
 
     public static void Initialize() {
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             UPDATES.forEach((key, values) -> {
                 ServerWorld world = server.getWorld(key);
-                SSAntiCheat.LOGGER.info("Update");
                 for (PlayerBlockUpdate update : values) {
                     int size = 15;
                     for (int y = -size; y < size; y++) {
@@ -64,13 +63,12 @@ public class Xray {
         });
     }
 
-
     public static boolean isEnable() {
-        return ENABLED;
+        return SSAntiCheat.CONFIG.xray.enable;
     }
 
     public static void setEnable(boolean value) {
-        ENABLED = value;
+        SSAntiCheat.CONFIG.xray.enable = value;
     }
 
     public static void addPlayerBlockUpdate(ServerWorld world, ServerPlayerEntity player, BlockPos pos) {
@@ -82,17 +80,20 @@ public class Xray {
     }
 
     public static LiteralArgumentBuilder<ServerCommandSource> commandRegister(CommandRegistryAccess registryAccess) {
+        REGISTRY_ACCESS = registryAccess;
         return LiteralArgumentBuilder.<ServerCommandSource>literal("xray")
                 .then(LiteralArgumentBuilder.<ServerCommandSource>literal("set_mode")
                         .then(LiteralArgumentBuilder.<ServerCommandSource>literal("visible").executes(ctx -> {
-                                    visibleCheck = new VisibleCheckModeVISIBLE();
+                                    SSAntiCheat.CONFIG.xray.mode = new VisibleCheckModeVISIBLE();
                                     ctx.getSource().sendMessage(Text.literal("The Xray mode was set to visible"));
+                                    SSAntiCheat.save(SSAntiCheat.SERVER);
                                     return 1;
                                 })
                         )
                         .then(LiteralArgumentBuilder.<ServerCommandSource>literal("light").executes(ctx -> {
-                                    visibleCheck = new VisibleCheckModeLIGHT();
+                                    SSAntiCheat.CONFIG.xray.mode = new VisibleCheckModeLIGHT();
                                     ctx.getSource().sendMessage(Text.literal("The Xray mode was set to light"));
+                                    SSAntiCheat.save(SSAntiCheat.SERVER);
                                     return 1;
                                 })
                         )
@@ -100,11 +101,12 @@ public class Xray {
 
                 .then(LiteralArgumentBuilder.<ServerCommandSource>literal("get_mode")
                         .executes(ctx -> {
-                            if (visibleCheck instanceof VisibleCheckModeLIGHT) {
+                            if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeLIGHT) {
                                 ctx.getSource().sendMessage(Text.literal("Xray mode: light"));
-                            } else if (visibleCheck instanceof VisibleCheckModeVISIBLE) {
+                            } else if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeVISIBLE) {
                                 ctx.getSource().sendMessage(Text.literal("Xray mode: visible"));
                             }
+                            SSAntiCheat.save(SSAntiCheat.SERVER);
                             return 1;
                         })
                 )
@@ -129,24 +131,27 @@ public class Xray {
                                                             if (!block.getDefaultState().isOpaque()) {
                                                                 ctx.getSource().sendMessage(Text.literal("Block needs to be opaque Block:"));
                                                                 ctx.getSource().sendMessage(Text.literal(block.toString()));
+                                                                SSAntiCheat.save(SSAntiCheat.SERVER);
                                                                 return 0;
                                                             }
                                                         }
-                                                        Xray.getShadowBlock = new GetShadowBlockRandom(blocks);
+                                                        SSAntiCheat.CONFIG.xray.shadow = new ShadowBlockRandom(blocks);
 
                                                     } catch (CommandSyntaxException e) {
                                                         ctx.getSource().sendMessage(Text.literal(e.toString()));
                                                     }
 
+                                                    SSAntiCheat.save(SSAntiCheat.SERVER);
                                                     return 1;
                                                 }
                                         )
 
                                 ).executes(ctx -> {
-                                            GetShadowBlockRandom getShadow = new GetShadowBlockRandom();
+                                            ShadowBlockRandom getShadow = new ShadowBlockRandom();
                                             ctx.getSource().sendMessage(Text.literal("Setting shadow with blocks:"));
                                             ctx.getSource().sendMessage(Text.literal(getShadow.blocks.toString()));
-                                            getShadowBlock = getShadow;
+                                            SSAntiCheat.CONFIG.xray.shadow = getShadow;
+                                            SSAntiCheat.save(SSAntiCheat.SERVER);
                                             return 1;
                                         }
                                 )
@@ -159,36 +164,38 @@ public class Xray {
                             if (!block.getDefaultState().isOpaque()) {
                                 ctx.getSource().sendMessage(Text.literal("Block needs to be opaque Block:"));
                                 ctx.getSource().sendMessage(Text.literal(block.toString()));
+                                SSAntiCheat.save(SSAntiCheat.SERVER);
                                 return 0;
                             }
-                            Xray.getShadowBlock = new GetShadowBlockStatic(block);
+                            SSAntiCheat.CONFIG.xray.shadow = new ShadowBlockSolid(block);
+                            SSAntiCheat.save(SSAntiCheat.SERVER);
                             return 1;
                         })))
                 );
     }
 
     public static boolean isVisible(WorldChunk chunk, int x, int y, int z, ChunkSection chunkSection, int sectionIndex) {
-        return visibleCheck.isVisible(chunk, x, y, z, chunkSection, sectionIndex);
+        return SSAntiCheat.CONFIG.xray.mode.isVisible(chunk, x, y, z, chunkSection, sectionIndex);
     }
 
     public static Block shadowBlock() {
-        return getShadowBlock.getBlock();
+        return SSAntiCheat.CONFIG.xray.shadow.getBlock();
     }
 
-    public interface VisibleCheck {
+    public interface VisibleCheck extends IConfig {
         boolean isVisible(WorldChunk chunk, int x, int y, int z, ChunkSection chunkSection, int sectionIndex);
     }
 
-    public interface GetShadowBlock {
+    public interface ShadowBlock extends IConfig {
         Block getBlock();
     }
 
-    public static class GetShadowBlockRandom implements GetShadowBlock {
+    public static class ShadowBlockRandom implements ShadowBlock {
         public Random rng = Random.create(2142532);
 
         public ArrayList<Block> blocks = new ArrayList<>();
 
-        public GetShadowBlockRandom() {
+        public ShadowBlockRandom() {
             blocks.add(Blocks.DIAMOND_ORE);
             blocks.add(Blocks.COAL_ORE);
             blocks.add(Blocks.COPPER_ORE);
@@ -209,7 +216,7 @@ public class Xray {
             blocks.add(Blocks.ANCIENT_DEBRIS);
         }
 
-        public GetShadowBlockRandom(ArrayList<Block> blocks) {
+        public ShadowBlockRandom(ArrayList<Block> blocks) {
             this.blocks = blocks;
         }
 
@@ -218,18 +225,70 @@ public class Xray {
             int index = rng.nextBetween(0, blocks.size() - 1);
             return blocks.get(index);
         }
+
+        @Override
+        public void load(ConfigIN in) {
+            in.readStringList("blocks").ifPresent(blocks_strings -> {
+                ArrayList<Block> blocks = new ArrayList<>();
+                for (String block_string : blocks_strings) {
+                    StringReader sr = new StringReader(block_string);
+                    try {
+                        blocks.add(BlockStateArgumentType.blockState(REGISTRY_ACCESS).parse(sr).getBlockState().getBlock());
+                    } catch (CommandSyntaxException e) {
+                        SSAntiCheat.LOGGER.info("Cannot parse block: {}", block_string);
+                    }
+                }
+
+                this.blocks = blocks;
+            });
+        }
+
+        @Override
+        public ConfigOUT save() {
+            ConfigOUT out = new ConfigOUT();
+
+            ArrayList<String> blocks = new ArrayList<>();
+            for (Block block : this.blocks) {
+                blocks.add(block.getDefaultState().getRegistryEntry().getIdAsString());
+            }
+
+            out.writeStringList("blocks", blocks);
+
+            return out;
+        }
     }
 
-    public static class GetShadowBlockStatic implements GetShadowBlock {
+    public static class ShadowBlockSolid implements ShadowBlock {
         Block block;
 
-        public GetShadowBlockStatic(Block block) {
+        public ShadowBlockSolid(Block block) {
             this.block = block;
         }
 
         @Override
         public Block getBlock() {
             return block;
+        }
+
+        @Override
+        public void load(ConfigIN in) {
+            in.readString("block").ifPresent(block_string -> {
+                StringReader sr = new StringReader(block_string);
+                try {
+                    block = BlockStateArgumentType.blockState(REGISTRY_ACCESS).parse(sr).getBlockState().getBlock();
+                } catch (CommandSyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        }
+
+        @Override
+        public ConfigOUT save() {
+            ConfigOUT out = new ConfigOUT();
+
+            out.writeString("block", block.getDefaultState().getRegistryEntry().getIdAsString());
+
+            return out;
         }
     }
 }

@@ -1,11 +1,13 @@
 package com.konkitoman.ssanticheat.xray.visibile_check;
 
-import com.konkitoman.ssanticheat.xray.Xray;
+import com.konkitoman.ssanticheat.ConfigIN;
+import com.konkitoman.ssanticheat.ConfigOUT;
+import com.konkitoman.ssanticheat.xray.XRay;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.world.chunk.ChunkSection;
 import net.minecraft.world.chunk.WorldChunk;
 
-public class VisibleCheckModeVISIBLE implements Xray.VisibleCheck {
+public class VisibleCheckModeVISIBLE implements XRay.VisibleCheck {
     @Override
     public boolean isVisible(WorldChunk chunk, int x, int y, int z, ChunkSection chunkSection, int sectionIndex) {
         int offset = chunk.sectionIndexToCoord(sectionIndex) * 16;
@@ -16,5 +18,15 @@ public class VisibleCheckModeVISIBLE implements Xray.VisibleCheck {
                 || !chunk.getWorld().getBlockState(pos.getBlockPos(x, (y + 1) + offset, z)).isOpaqueFullCube(chunk.getWorld(), pos.getBlockPos(x, (y + 1) + offset, z))
                 || !chunk.getWorld().getBlockState(pos.getBlockPos(x, y + offset, z - 1)).isOpaqueFullCube(chunk.getWorld(), pos.getBlockPos(x, y + offset, z - 1))
                 || !chunk.getWorld().getBlockState(pos.getBlockPos(x, y + offset, z + 1)).isOpaqueFullCube(chunk.getWorld(), pos.getBlockPos(x, y + offset, z + 1));
+    }
+
+    @Override
+    public void load(ConfigIN in) {
+
+    }
+
+    @Override
+    public ConfigOUT save() {
+        return new ConfigOUT();
     }
 }

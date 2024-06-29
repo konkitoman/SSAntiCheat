@@ -1,6 +1,6 @@
 package com.konkitoman.ssanticheat.mixin.xray;
 
-import com.konkitoman.ssanticheat.xray.Xray;
+import com.konkitoman.ssanticheat.xray.XRay;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockUpdateS2CPacket;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.*;
 public abstract class ServerCommonNetworkHandler {
     @ModifyArg(method = "send", at = @At(value = "INVOKE", target = "Lnet/minecraft/network/ClientConnection;send(Lnet/minecraft/network/packet/Packet;Lnet/minecraft/network/PacketCallbacks;Z)V"))
     public Packet<?> send(Packet<?> packet) {
-        if (!Xray.ENABLED) return packet;
+        if (!XRay.isEnable()) return packet;
 
         if ((Object) this instanceof ServerPlayNetworkHandler) {
             ServerPlayNetworkHandler pl = (ServerPlayNetworkHandler) ((Object) this);
@@ -42,12 +42,12 @@ public abstract class ServerCommonNetworkHandler {
             p = p.add(-p.getX(), -p.getY(), -p.getZ());
             p = p.add(x, (pos.getY() - (16 * chunk.sectionIndexToCoord(section_index))), z);
 
-            if (Xray.isVisible(chunk, p.getX(), p.getY(), p.getZ(), chunk.getSection(section_index), section_index)) {
+            if (XRay.isVisible(chunk, p.getX(), p.getY(), p.getZ(), chunk.getSection(section_index), section_index)) {
                 return packet;
             }
 
             if (packet instanceof BlockUpdateS2CPacket) {
-                packet = new BlockUpdateS2CPacket(((BlockUpdateS2CPacket) packet).getPos(), Xray.shadowBlock().getDefaultState());
+                packet = new BlockUpdateS2CPacket(((BlockUpdateS2CPacket) packet).getPos(), XRay.shadowBlock().getDefaultState());
                 return packet;
             }
         }
