@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.konkitoman.ssanticheat.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "refmap": "ssanticheat.refmap.json",
   "mixins": [
   ],
   "client": [
@@ -10,8 +10,7 @@
   "server": [
     "xray.ChunkDataSender",
     "xray.ServerCommonNetworkHandler",
-    "xray.ServerPlayNetworkHandler",
-    "xray.ServerPlayerInteractionManager"
+    "xray.ServerPlayNetworkHandler"
   ],
   "injectors": {
     "defaultRequire": 1

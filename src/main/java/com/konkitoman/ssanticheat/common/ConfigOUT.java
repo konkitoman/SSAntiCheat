@@ -1,4 +1,4 @@
-package com.konkitoman.ssanticheat;
+package com.konkitoman.ssanticheat.common;
 
 import java.util.List;
 import java.util.Map;

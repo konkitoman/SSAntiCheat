@@ -1,6 +1,6 @@
-package com.konkitoman.ssanticheat;
+package com.konkitoman.ssanticheat.common;
 
-import com.konkitoman.ssanticheat.xray.XRayConfig;
+import com.konkitoman.ssanticheat.common.xray.XRayConfig;
 
 public class Config implements IConfig {
     public XRayConfig xray = new XRayConfig();

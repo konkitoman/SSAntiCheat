@@ -1,11 +1,11 @@
-package com.konkitoman.ssanticheat.xray;
+package com.konkitoman.ssanticheat.common.xray;
 
-import com.konkitoman.ssanticheat.ConfigIN;
-import com.konkitoman.ssanticheat.ConfigOUT;
-import com.konkitoman.ssanticheat.IConfig;
-import com.konkitoman.ssanticheat.xray.visibile_check.VisibleCheckModeLIGHT;
-import com.konkitoman.ssanticheat.xray.visibile_check.VisibleCheckModeVISIBLE;
-import net.minecraft.block.Blocks;
+import com.konkitoman.ssanticheat.common.ConfigIN;
+import com.konkitoman.ssanticheat.common.ConfigOUT;
+import com.konkitoman.ssanticheat.common.IConfig;
+import com.konkitoman.ssanticheat.common.xray.visibile_check.VisibleCheckModeLIGHT;
+import com.konkitoman.ssanticheat.common.xray.visibile_check.VisibleCheckModeVISIBLE;
+import net.minecraft.world.level.block.Blocks;
 
 public class XRayConfig implements IConfig {
     public boolean enable = false;
