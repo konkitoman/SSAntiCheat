@@ -5,8 +5,11 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.level.LevelAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.snakeyaml.engine.v2.api.*;
@@ -37,7 +40,11 @@ public class SSAntiCheat {
     }
 
     public static void onServerTick() {
-        XRay.onServerTick();
+        if (XRay.isEnable()) XRay.onServerTick();
+    }
+
+    public static void onNeighborNotify(ServerLevel level, BlockPos pos) {
+        if (XRay.isEnable()) XRay.onNeighborNotify(level, pos);
     }
 
     public static void onRegisterCommands(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext registryAccess) {
@@ -77,7 +84,6 @@ public class SSAntiCheat {
     public static void save(MinecraftServer server) {
         LOGGER.info("Saving");
         try {
-
             new Dump(DumpSettings.builder().setMultiLineFlow(true).setDefaultFlowStyle(FlowStyle.BLOCK).setSchema(new CoreSchema()).build()).dump(CONFIG.save().map, new YamlOutputStreamWriter(new FileOutputStream(server.getServerDirectory().toPath().resolve("config/ssanticheat.yaml").toFile()), Charset.defaultCharset()) {
                         @Override
                         public void processIOException(IOException e) {

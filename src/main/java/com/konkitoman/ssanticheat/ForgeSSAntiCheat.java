@@ -1,17 +1,18 @@
 package com.konkitoman.ssanticheat;
 
 import com.konkitoman.ssanticheat.common.SSAntiCheat;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.DataPackRegistryEvent;
 
 @Mod(ForgeSSAntiCheat.MODID)
 @Mod.EventBusSubscriber(modid = ForgeSSAntiCheat.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.DEDICATED_SERVER)
@@ -46,5 +47,8 @@ public class ForgeSSAntiCheat {
         SSAntiCheat.onRegisterCommands(event.getDispatcher(), event.getBuildContext());
     }
 
-
+    @SubscribeEvent
+    public void onNeighborNotifyEvent(BlockEvent.NeighborNotifyEvent event) {
+        SSAntiCheat.onNeighborNotify((ServerLevel) event.getLevel(), event.getPos());
+    }
 }

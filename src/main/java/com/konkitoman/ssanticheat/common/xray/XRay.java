@@ -16,8 +16,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.blocks.BlockInput;
 import net.minecraft.commands.arguments.blocks.BlockStateArgument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -25,13 +25,13 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.joml.Random;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import static com.konkitoman.ssanticheat.common.SSAntiCheat.CONFIG;
 import static com.konkitoman.ssanticheat.common.SSAntiCheat.SERVER;
 
 public class XRay {
@@ -48,6 +48,10 @@ public class XRay {
     public static void onServerTick() {
         UPDATES.forEach((key, values) -> {
             ServerLevel world = SERVER.getLevel(key);
+            if (world == null) {
+                return;
+            }
+
             for (PlayerBlockUpdate update : values) {
                 int size = 15;
                 for (int y = -size; y < size; y++) {
@@ -55,7 +59,10 @@ public class XRay {
                         for (int z = -size; z <= size; z++) {
                             double distanceFromCenter = Math.sqrt(x * x + y * y + z * z);
                             if (distanceFromCenter <= size) {
-                                world.getChunkSource().broadcastAndSend(update.player, new ClientboundBlockUpdatePacket(world, update.pos.offset(x, y, z)));
+                                try {
+                                    world.getChunkSource().blockChanged(update.pos.offset(x, y, z));
+                                } catch (Exception ignored) {
+                                }
                             }
                         }
                     }
@@ -65,6 +72,10 @@ public class XRay {
         });
 
         UPDATES.clear();
+    }
+
+    public static void onNeighborNotify(ServerLevel level, BlockPos pos) {
+        CONFIG.xray.mode.onNeighborNotify(level, pos);
     }
 
     public static boolean isEnable() {
@@ -84,102 +95,86 @@ public class XRay {
 
     public static LiteralArgumentBuilder<CommandSourceStack> commandRegister(CommandBuildContext registryAccess) {
         REGISTRY_ACCESS = registryAccess;
-        return LiteralArgumentBuilder.<CommandSourceStack>literal("xray")
-                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("set_mode")
-                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("visible").executes(ctx -> {
-                                    SSAntiCheat.CONFIG.xray.mode = new VisibleCheckModeVISIBLE();
-                                    ctx.getSource().sendSystemMessage(Component.literal("The Xray mode was set to visible"));
-                                    SSAntiCheat.save(SERVER);
-                                    return 1;
-                                })
-                        )
-                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("light").executes(ctx -> {
-                                    SSAntiCheat.CONFIG.xray.mode = new VisibleCheckModeLIGHT();
-                                    ctx.getSource().sendSystemMessage(Component.literal("The Xray mode was set to light"));
-                                    SSAntiCheat.save(SERVER);
-                                    return 1;
-                                })
-                        )
-                )
+        return LiteralArgumentBuilder.<CommandSourceStack>literal("xray").then(LiteralArgumentBuilder.<CommandSourceStack>literal("set_mode").then(LiteralArgumentBuilder.<CommandSourceStack>literal("visible").executes(ctx -> {
+                    SSAntiCheat.CONFIG.xray.mode = new VisibleCheckModeVISIBLE();
+                    ctx.getSource().sendSystemMessage(Component.literal("The Xray mode was set to visible"));
+                    SSAntiCheat.save(SERVER);
+                    return 1;
+                })).then(LiteralArgumentBuilder.<CommandSourceStack>literal("light").executes(ctx -> {
+                    SSAntiCheat.CONFIG.xray.mode = new VisibleCheckModeLIGHT();
+                    ctx.getSource().sendSystemMessage(Component.literal("The Xray mode was set to light"));
+                    SSAntiCheat.save(SERVER);
+                    return 1;
+                })))
 
-                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("get_mode")
-                        .executes(ctx -> {
-                            if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeLIGHT) {
-                                ctx.getSource().sendSystemMessage(Component.literal("Xray mode: light"));
-                            } else if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeVISIBLE) {
-                                ctx.getSource().sendSystemMessage(Component.literal("Xray mode: visible"));
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("get_mode").executes(ctx -> {
+                    if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeLIGHT) {
+                        ctx.getSource().sendSystemMessage(Component.literal("Xray mode: light"));
+                    } else if (SSAntiCheat.CONFIG.xray.mode instanceof VisibleCheckModeVISIBLE) {
+                        ctx.getSource().sendSystemMessage(Component.literal("Xray mode: visible"));
+                    }
+                    SSAntiCheat.save(SERVER);
+                    return 1;
+                }))
+
+                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("set_shadow").then(LiteralArgumentBuilder.<CommandSourceStack>literal("random").then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("blocks", StringArgumentType.greedyString()).executes(ctx -> {
+                            String blocks_text = ctx.getArgument("blocks", String.class);
+
+                            try {
+                                ArrayList<Block> blocks = new ArrayList<>();
+                                for (String block_text : blocks_text.split(",")) {
+                                    StringReader sr = new StringReader(block_text);
+
+                                    blocks.add(new BlockStateArgument(registryAccess).parse(sr).getState().getBlock());
+                                }
+
+                                ctx.getSource().sendSystemMessage(Component.literal("Setting shadow with blocks:"));
+                                ctx.getSource().sendSystemMessage(Component.literal(blocks.toString()));
+
+                                for (Block block : blocks) {
+                                    if (!block.defaultBlockState().canOcclude()) {
+                                        ctx.getSource().sendSystemMessage(Component.literal("Block needs to be opaque Block:"));
+                                        ctx.getSource().sendSystemMessage(Component.literal(block.toString()));
+                                        SSAntiCheat.save(SERVER);
+                                        return 0;
+                                    }
+                                }
+                                SSAntiCheat.CONFIG.xray.shadow = new ShadowBlockRandom(blocks);
+
+                            } catch (CommandSyntaxException e) {
+                                ctx.getSource().sendSystemMessage(Component.literal(e.toString()));
                             }
+
                             SSAntiCheat.save(SERVER);
                             return 1;
                         })
-                )
 
-                .then(LiteralArgumentBuilder.<CommandSourceStack>literal("set_shadow")
-                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("random")
-                                .then(RequiredArgumentBuilder.<CommandSourceStack, String>argument("blocks", StringArgumentType.greedyString())
-                                        .executes(ctx -> {
-                                                    String blocks_text = ctx.getArgument("blocks", String.class);
-
-                                                    try {
-                                                        ArrayList<Block> blocks = new ArrayList<>();
-                                                        for (String block_text : blocks_text.split(",")) {
-                                                            StringReader sr = new StringReader(block_text);
-
-                                                            blocks.add(new BlockStateArgument(registryAccess).parse(sr).getState().getBlock());
-                                                        }
-
-                                                        ctx.getSource().sendSystemMessage(Component.literal("Setting shadow with blocks:"));
-                                                        ctx.getSource().sendSystemMessage(Component.literal(blocks.toString()));
-
-                                                        for (Block block : blocks) {
-                                                            if (!block.defaultBlockState().canOcclude()) {
-                                                                ctx.getSource().sendSystemMessage(Component.literal("Block needs to be opaque Block:"));
-                                                                ctx.getSource().sendSystemMessage(Component.literal(block.toString()));
-                                                                SSAntiCheat.save(SERVER);
-                                                                return 0;
-                                                            }
-                                                        }
-                                                        SSAntiCheat.CONFIG.xray.shadow = new ShadowBlockRandom(blocks);
-
-                                                    } catch (CommandSyntaxException e) {
-                                                        ctx.getSource().sendSystemMessage(Component.literal(e.toString()));
-                                                    }
-
-                                                    SSAntiCheat.save(SERVER);
-                                                    return 1;
-                                                }
-                                        )
-
-                                ).executes(ctx -> {
-                                            ShadowBlockRandom getShadow = new ShadowBlockRandom();
-                                            ctx.getSource().sendSystemMessage(Component.literal("Setting shadow with blocks:"));
-                                            ctx.getSource().sendSystemMessage(Component.literal(getShadow.blocks.toString()));
-                                            SSAntiCheat.CONFIG.xray.shadow = getShadow;
-                                            SSAntiCheat.save(SERVER);
-                                            return 1;
-                                        }
-                                )
-                        )
-                        .then(LiteralArgumentBuilder.<CommandSourceStack>literal("solid").then(RequiredArgumentBuilder.<CommandSourceStack, BlockInput>argument("block", new BlockStateArgument(registryAccess)).executes(ctx -> {
-                            BlockInput blockStateA = ctx.getArgument("block", BlockInput.class);
-                            Block block = blockStateA.getState().getBlock();
-                            ctx.getSource().sendSystemMessage(Component.literal("Setting shadow as block:"));
-                            ctx.getSource().sendSystemMessage(Component.literal(block.toString()));
-                            if (!block.defaultBlockState().canOcclude()) {
-                                ctx.getSource().sendSystemMessage(Component.literal("Block needs to be opaque Block:"));
-                                ctx.getSource().sendSystemMessage(Component.literal(block.toString()));
-                                SSAntiCheat.save(SERVER);
-                                return 0;
-                            }
-                            SSAntiCheat.CONFIG.xray.shadow = new ShadowBlockSolid(block);
-                            SSAntiCheat.save(SERVER);
-                            return 1;
-                        })))
-                );
+                ).executes(ctx -> {
+                    ShadowBlockRandom getShadow = new ShadowBlockRandom();
+                    ctx.getSource().sendSystemMessage(Component.literal("Setting shadow with blocks:"));
+                    ctx.getSource().sendSystemMessage(Component.literal(getShadow.blocks.toString()));
+                    SSAntiCheat.CONFIG.xray.shadow = getShadow;
+                    SSAntiCheat.save(SERVER);
+                    return 1;
+                })).then(LiteralArgumentBuilder.<CommandSourceStack>literal("solid").then(RequiredArgumentBuilder.<CommandSourceStack, BlockInput>argument("block", new BlockStateArgument(registryAccess)).executes(ctx -> {
+                    BlockInput blockStateA = ctx.getArgument("block", BlockInput.class);
+                    Block block = blockStateA.getState().getBlock();
+                    ctx.getSource().sendSystemMessage(Component.literal("Setting shadow as block:"));
+                    ctx.getSource().sendSystemMessage(Component.literal(block.toString()));
+                    if (!block.defaultBlockState().canOcclude()) {
+                        ctx.getSource().sendSystemMessage(Component.literal("Block needs to be opaque Block:"));
+                        ctx.getSource().sendSystemMessage(Component.literal(block.toString()));
+                        SSAntiCheat.save(SERVER);
+                        return 0;
+                    }
+                    SSAntiCheat.CONFIG.xray.shadow = new ShadowBlockSolid(block);
+                    SSAntiCheat.save(SERVER);
+                    return 1;
+                }))));
     }
 
-    public static boolean isVisible(LevelChunk chunk, int x, int y, int z, LevelChunkSection chunkSection, int sectionIndex) {
-        return SSAntiCheat.CONFIG.xray.mode.isVisible(chunk, x, y, z, chunkSection, sectionIndex);
+    public static boolean isVisible(LevelChunk chunk, Vec3i pos, int sectionIndex) {
+        return SSAntiCheat.CONFIG.xray.mode.isVisible(chunk, pos, sectionIndex);
     }
 
     public static Block shadowBlock() {
@@ -187,7 +182,9 @@ public class XRay {
     }
 
     public interface VisibleCheck extends IConfig {
-        boolean isVisible(LevelChunk chunk, int x, int y, int z, LevelChunkSection chunkSection, int sectionIndex);
+        boolean isVisible(LevelChunk chunk, Vec3i pos, int sectionIndex);
+
+        void onNeighborNotify(ServerLevel level, BlockPos pos);
     }
 
     public interface ShadowBlock extends IConfig {

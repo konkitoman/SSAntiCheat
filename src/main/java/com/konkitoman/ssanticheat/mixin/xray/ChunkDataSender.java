@@ -2,6 +2,7 @@ package com.konkitoman.ssanticheat.mixin.xray;
 
 import com.konkitoman.ssanticheat.common.xray.ChunkDataState;
 import com.konkitoman.ssanticheat.common.xray.XRay;
+import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -36,12 +37,11 @@ public abstract class ChunkDataSender {
                 for (int z = 0; z < 16; z++) {
                     for (int x = 0; x < 16; x++) {
                         BlockState state = section.getBlockState(x, y, z);
-                        if (state.canOcclude()) {
-                            if (XRay.isVisible(levelchunksection, x, y, z, section, i)) continue;
+                        if (XRay.isVisible(levelchunksection, new Vec3i(x, y, z), i)) continue;
 
-                            sSAntiCheat$toRestore.add(new ChunkDataState(state, i, x, y, z));
-                            section.setBlockState(x, y, z, XRay.shadowBlock().defaultBlockState());
-                        }
+                        sSAntiCheat$toRestore.add(new ChunkDataState(state, i, x, y, z));
+                        section.setBlockState(x, y, z, XRay.shadowBlock().defaultBlockState());
+
                     }
                 }
             }

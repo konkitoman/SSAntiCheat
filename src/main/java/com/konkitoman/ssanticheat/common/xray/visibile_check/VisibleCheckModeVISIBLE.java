@@ -3,13 +3,21 @@ package com.konkitoman.ssanticheat.common.xray.visibile_check;
 import com.konkitoman.ssanticheat.common.ConfigIN;
 import com.konkitoman.ssanticheat.common.ConfigOUT;
 import com.konkitoman.ssanticheat.common.xray.XRay;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.LevelChunkSection;
 
 public class VisibleCheckModeVISIBLE implements XRay.VisibleCheck {
     @Override
-    public boolean isVisible(LevelChunk chunk, int x, int y, int z, LevelChunkSection chunkSection, int sectionIndex) {
+    public boolean isVisible(LevelChunk chunk, Vec3i rpos, int sectionIndex) {
+        int x = rpos.getX();
+        int y = rpos.getY();
+        int z = rpos.getZ();
+
         int offset = chunk.getSectionYFromSectionIndex(sectionIndex) * 16;
         ChunkPos pos = chunk.getPos();
         return !chunk.getLevel().getBlockState(pos.getBlockAt(x - 1, y + offset, z)).isSolidRender(chunk.getLevel(), pos.getBlockAt(x - 1, y + offset, z))
@@ -21,8 +29,11 @@ public class VisibleCheckModeVISIBLE implements XRay.VisibleCheck {
     }
 
     @Override
-    public void load(ConfigIN in) {
+    public void onNeighborNotify(ServerLevel level, BlockPos pos) {
+    }
 
+    @Override
+    public void load(ConfigIN in) {
     }
 
     @Override
